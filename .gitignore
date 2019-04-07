@@ -1,0 +1,5 @@
+.vscode/*
+hw1/.vscode/*
+
+*.o
+settings.json
