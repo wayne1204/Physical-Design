@@ -249,7 +249,7 @@ bool PartitionMgr::moveCell(int iter){
     else
         times = ceil(times * 0.2);
 
-    for(int i = 0; i < total_cell_.size(); ++i){
+    for(int i = 0; i < total_cell_.size()/2; ++i){
         bool isA; 
         Cell* a = bucket_a_->getMaxGain();
         Cell* b = bucket_b_->getMaxGain();
