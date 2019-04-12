@@ -20,6 +20,7 @@ public:
 
     void parse(const char* fname);
     void initPartition();
+    void initGain();
     void updateGain(Cell* base_cell);
     void reconstruct(int index);
     bool moveCell();

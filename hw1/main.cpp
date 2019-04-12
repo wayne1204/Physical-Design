@@ -9,9 +9,13 @@ int main(int argc, char** argv){
     PartitionMgr mgr;
     mgr.parse(argv[1]);
     mgr.initPartition();
-    int count;
+    mgr.initGain();
+    int count = 0;
+    cout << "Iteration# 0 \n";
     while(mgr.moveCell()){
-        cout << "Iteration#" << count++ <<endl;
+        ++count;
+        mgr.initGain();
+        cout << "Iteration#" << count <<endl;
     }
     mgr.output();
     return 0;

@@ -23,6 +23,7 @@ public:
     void setPartition(bool b) {isSetA_ = b; }
     bool getPartition() {return isSetA_;}
     void Lock() {isLocked_ = true;}
+    void Unlock() {isLocked_ = false; }
     bool isLocked() {return isLocked_;}
     bool incrementGain(); 
     bool decrementGain();

@@ -94,7 +94,13 @@ void PartitionMgr::initPartition(){
         } 
         ++count;
     }
+    printf("Finish initial partition. Criteria: %.2f - %.2f \n", low, up);
+}
+
+void PartitionMgr::initGain(){
     // check each net
+    bucket_a_->init();
+    bucket_b_->init();
     for(auto it = total_cell_.begin(); it != total_cell_.end(); ++it){
         vector<Net*> nets = it->second->getNets();
         bool isA = it->second->getPartition();
@@ -114,13 +120,12 @@ void PartitionMgr::initPartition(){
         } 
         bucket->update(it->second, gain);
     }
-    printf("Finish initial partition. Criteria: %.2f - %.2f \n", low, up);
 }
 
 void PartitionMgr::updateGain(Cell* base_cell){
     vector<Net*> nets = base_cell->getNets();
     bool isA = base_cell->getPartition();
-
+    base_cell->setPartition(!isA);
     for(int j = 0; j < nets.size(); ++j){
         int fromSize = isA ? nets[j]->getASize() : nets[j]->getBSize();
         int toSize   = isA ? nets[j]->getBSize() : nets[j]->getASize();
@@ -179,19 +184,24 @@ void PartitionMgr::updateGain(Cell* base_cell){
 }
 
 void PartitionMgr::reconstruct(int index){
-    // for(int i = total_cell_.size() - 1 ; i > index; --i){
-        
-    //     if(moving[i]->getPartition()){
-    //         bucket_a_->remove(moving[i]);
-    //         bucket_b_->insert(moving[i]);
-    //     }else{
-    //         bucket_b_->remove(moving[i]);
-    //         bucket_a_->insert(moving[i]);
-    //     }
-    // }
-    // for(int i = 0; i < total_cell_.size(); ++i){
-    //     total_cell_[i].
-    // }
+    for(int i = total_cell_.size() - 1 ; i > index; --i){
+        bool isA = moving[i]->getPartition();
+        if(isA){
+            bucket_a_->remove(moving[i]);
+            bucket_b_->insert(moving[i]);
+        }else{
+            bucket_b_->remove(moving[i]);
+            bucket_a_->insert(moving[i]);
+        }
+        vector<Net*> nets = moving[i]->getNets();
+        for(int j = 0; j < nets.size(); ++j){
+            nets[j]->removeCell(moving[i], isA);
+            nets[j]->addCell(moving[i], !isA);
+        }
+    }
+    for(auto it = total_cell_.begin(); it != total_cell_.end(); ++it){
+        it->second->Unlock();
+    }
 }
 
 bool PartitionMgr::moveCell(){
@@ -237,9 +247,10 @@ bool PartitionMgr::moveCell(){
             bucket_a_->insert(cell);
         }
     }
+    reconstruct(index);
     cout << "Largest Partial Sum " << max << " | # of moving cells:" << index <<endl;
     cout << "A size:" << bucket_a_->getSize() << " B size:" << bucket_b_->getSize() <<endl;
-    return (partial_sum > 0);
+    return (max > 0);
 }
 
 size_t PartitionMgr::getToken(size_t pos, string& s, string& token){

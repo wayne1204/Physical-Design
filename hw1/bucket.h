@@ -25,6 +25,7 @@ public:
         total_cells_ = 0;
     }
     int getSize() {return total_cells_;}
+    void init() {max_gain_ptr_ = 2*max_gain_;}
     void setMaxGain(int gain);
     void setBound(double up, double low);
     void insert(Cell* c);
