@@ -23,7 +23,7 @@ public:
     void setPartition(bool b) {isSetA_ = b; }
     bool getPartition() {return isSetA_;}
     void Lock() {isLocked_ = true;}
-    void Unlock() {isLocked_ = false; }
+    void reset();
     bool isLocked() {return isLocked_;}
     bool incrementGain(); 
     bool decrementGain();
@@ -58,6 +58,7 @@ public:
     }
     void addCell(Cell* c, bool setA);
     void removeCell(Cell* c, bool setA);
+    void reset();
     int getASize() {return partition_a_.size();}
     int getBSize() {return partition_b_.size();}
     set<Cell*> GetPartionA() {return partition_a_;}
@@ -67,7 +68,5 @@ private:
     string name_;
     set<Cell*> partition_a_;
     set<Cell*> partition_b_;
-
-    std::vector<Cell*> connected_cells_;
 };
 #endif

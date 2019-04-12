@@ -72,10 +72,8 @@ void PartitionMgr::initPartition(){
     int count = 0;
     double low = (1 - degree) * total_cell_.size() / 2;
     double up = (1 + degree) * total_cell_.size() / 2;
-    bucket_a_->setMaxGain(max_pin_num);
-    bucket_a_->setBound(up, low);
-    bucket_b_->setMaxGain(max_pin_num);
-    bucket_b_->setBound(up, low);
+    bucket_a_->init(max_pin_num, low, up);
+    bucket_b_->init(max_pin_num, low, up);
 
     // split cell to two sets
     for(auto it = total_cell_.begin(); it != total_cell_.end(); ++it){
@@ -83,10 +81,10 @@ void PartitionMgr::initPartition(){
         it->second->setPartition(SetA);
         if(SetA){
             bucket_a_->insert(it->second);
-            init_a.insert(it->second);
+            set_a_initial.insert(it->second);
         }else{
             bucket_b_->insert(it->second);
-            init_b.insert(it->second);
+            set_b_initial.insert(it->second);
         }
         vector<Net*> nets = it->second->getNets();
         for(int j = 0; j < nets.size(); ++j){
@@ -99,14 +97,11 @@ void PartitionMgr::initPartition(){
 
 void PartitionMgr::initGain(){
     // check each net
-    bucket_a_->init();
-    bucket_b_->init();
     for(auto it = total_cell_.begin(); it != total_cell_.end(); ++it){
-        vector<Net*> nets = it->second->getNets();
         bool isA = it->second->getPartition();
         Bucket* bucket = isA ? bucket_a_ : bucket_b_;
-        int gain = it->second->getGain();
-
+        vector<Net*> nets = it->second->getNets();
+        assert(it->second->getGain() == 0);
         for(int j = 0; j < nets.size(); ++j){
             int fromSize = isA ? nets[j]->getASize() : nets[j]->getBSize();
             int toSize   = isA ? nets[j]->getBSize() : nets[j]->getASize();
@@ -118,8 +113,9 @@ void PartitionMgr::initGain(){
                 it->second->decrementGain();
             }
         } 
-        bucket->update(it->second, gain);
+        bucket->update(it->second, 0);
     }
+    printf("Finish init gain, cut size = %d \n", countCost());
 }
 
 void PartitionMgr::updateGain(Cell* base_cell){
@@ -184,24 +180,59 @@ void PartitionMgr::updateGain(Cell* base_cell){
 }
 
 void PartitionMgr::reconstruct(int index){
-    for(int i = total_cell_.size() - 1 ; i > index; --i){
+    // reset cell & net
+    for(auto it = total_cell_.begin(); it != total_cell_.end(); ++it){
+        it->second->reset();
+    }
+    for(auto it = total_net_.begin(); it != total_net_.end(); ++it){
+        it->second->reset();
+    }
+
+    // reset bucket
+    bucket_a_->clear();
+    bucket_b_->clear();
+    moving.clear();
+    for(auto it = set_a_initial.begin(); it != set_a_initial.end(); ++it){
+        (*it)->setPartition(true);
+        bucket_a_->insert(*it);
+        vector<Net*> nets = (*it)->getNets();
+        for(int j = 0; j < nets.size(); ++j){
+            nets[j]->addCell(*it, true);
+        } 
+    }
+    for(auto it = set_b_initial.begin(); it != set_b_initial.end(); ++it){
+        (*it)->setPartition(false);
+        bucket_b_->insert(*it);
+        vector<Net*> nets = (*it)->getNets();
+        for(int j = 0; j < nets.size(); ++j){
+            nets[j]->addCell(*it, false);
+        } 
+    }
+    
+    // perform movement
+    for(int i = 0; i <= index; ++i){
         bool isA = moving[i]->getPartition();
         if(isA){
             bucket_a_->remove(moving[i]);
             bucket_b_->insert(moving[i]);
+            set_a_initial.erase(moving[i]);
+            set_b_initial.insert(moving[i]);
         }else{
             bucket_b_->remove(moving[i]);
             bucket_a_->insert(moving[i]);
+            set_b_initial.erase(moving[i]);
+            set_a_initial.insert(moving[i]);
         }
+
+        moving[i]->setPartition(!isA);
         vector<Net*> nets = moving[i]->getNets();
         for(int j = 0; j < nets.size(); ++j){
             nets[j]->removeCell(moving[i], isA);
             nets[j]->addCell(moving[i], !isA);
         }
     }
-    for(auto it = total_cell_.begin(); it != total_cell_.end(); ++it){
-        it->second->Unlock();
-    }
+    cout << "Finish reconstructing " << "A size:" << bucket_a_->getSize() 
+    << " B size:" << bucket_b_->getSize() <<endl;
 }
 
 bool PartitionMgr::moveCell(){
@@ -232,6 +263,7 @@ bool PartitionMgr::moveCell(){
         else
             cout << " from B to A \r";
         partial_sum += cell->getGain();
+        
         if(partial_sum > max){
             max = partial_sum;
             index = i;
@@ -242,15 +274,28 @@ bool PartitionMgr::moveCell(){
         if(isA){
             bucket_a_->remove(cell);
             bucket_b_->insert(cell);
+            
         }else{
             bucket_b_->remove(cell);
             bucket_a_->insert(cell);
         }
     }
-    reconstruct(index);
-    cout << "Largest Partial Sum " << max << " | # of moving cells:" << index <<endl;
-    cout << "A size:" << bucket_a_->getSize() << " B size:" << bucket_b_->getSize() <<endl;
+    printf("Largest Partial sum: %d   ( at step: %d )     \n", max , index+1);
+    if (max > 0)
+        reconstruct(index);
     return (max > 0);
+}
+
+int PartitionMgr::countCost(){
+    int cost = 0;
+    for(auto it = total_net_.begin(); it != total_net_.end(); ++it){
+        int a = it->second->getASize();
+        int b = it->second->getBSize();
+        if(a * b){
+            ++cost;
+        }
+    }
+    return cost;
 }
 
 size_t PartitionMgr::getToken(size_t pos, string& s, string& token){
@@ -264,10 +309,18 @@ size_t PartitionMgr::getToken(size_t pos, string& s, string& token){
     return end; 
 }
 
-void PartitionMgr::output(){
-    cout <<"output file" << endl;
-
-    // for(unordered_map <string, Cell*>::iterator it = total_cell_.begin(); it != total_cell_.end(); ++it){
-    //     cout << it->first << " " << it->second->getGain() << endl;
-    // }
+void PartitionMgr::output(const char* fname){
+    ofstream fs(fname);
+    fs << "Cutsize = " << countCost() <<endl;
+    fs << "G1 " << set_a_initial.size() << endl;
+    for(auto it = set_a_initial.begin(); it != set_a_initial.end(); ++it){
+        fs << (*it)->getName() << ' ';
+    }
+    fs << ";\n";
+    fs << "G2 " << set_b_initial.size() << endl;
+    for(auto it = set_b_initial.begin(); it != set_b_initial.end(); ++it){
+        fs << (*it)->getName() << ' ';
+    }
+    fs << ";\n";
+    fs.close();
 }

@@ -49,8 +49,14 @@ Cell* LinkedList::get_item(){
     return current;
 } 
 
+void LinkedList::clear(){
+    size_ = 0;
+    first = NULL;
+}
+
 // input: max gain of a cell
-void Bucket::setMaxGain(int max_gain){
+void Bucket::init(int max_gain, double low, double up){
+    assert(low < up);
     max_gain_ = max_gain;
     max_gain_ptr_ = max_gain * 2; 
 
@@ -64,10 +70,7 @@ void Bucket::setMaxGain(int max_gain){
         LinkedList* list = new LinkedList(i*(-1));
         bucket_list_.push_back(list);
     }
-}
 
-void Bucket::setBound(double up, double low){
-    assert(low < up);
     low_bound = low;
     up_bound = up;
 }
@@ -86,6 +89,14 @@ void Bucket::remove(Cell* c){
         max_gain_ptr_++;
     }
     total_cells_--;
+}
+
+void Bucket::clear(){
+    for(int i = 0; i < bucket_list_.size(); ++i){
+        bucket_list_[i]->clear();
+    }
+    total_cells_ = 0;
+    max_gain_ptr_ = max_gain_ *2;
 }
 
 void Bucket::update(Cell* c, int old_gain){

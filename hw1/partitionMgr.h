@@ -21,10 +21,11 @@ public:
     void parse(const char* fname);
     void initPartition();
     void initGain();
-    void updateGain(Cell* base_cell);
     void reconstruct(int index);
+    void updateGain(Cell* base_cell);
     bool moveCell();
-    void output();
+    int countCost();
+    void output(const char* fname);
 
 private:
     size_t getToken(size_t pos, string& s, string& token);
@@ -34,8 +35,8 @@ private:
     Bucket* bucket_b_;
 
     // for reconstruct
-    unordered_set <Cell*> init_a;
-    unordered_set <Cell*> init_b;
+    set <Cell*> set_a_initial;
+    set <Cell*> set_b_initial;
     vector<Cell*> moving;
 
     // total

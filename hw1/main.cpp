@@ -7,16 +7,17 @@ int main(int argc, char** argv){
         return -1;
     }
     PartitionMgr mgr;
+    int count = 0;
+
     mgr.parse(argv[1]);
     mgr.initPartition();
+    
+    cout << "\nIteration# 0 \n";
     mgr.initGain();
-    int count = 0;
-    cout << "Iteration# 0 \n";
     while(mgr.moveCell()){
-        ++count;
+        cout << "\nIteration#" << ++count <<endl;
         mgr.initGain();
-        cout << "Iteration#" << count <<endl;
     }
-    mgr.output();
+    mgr.output(argv[2]);
     return 0;
 }
