@@ -33,30 +33,32 @@ Net* PartitionMgr::registerNet(string n){
 void PartitionMgr::parse(const char* fname){
     ifstream fs(fname);
     string line, token;
-    bool done = false;
 
     getline(fs, line);
     setDegree(stod(line));
+    Net* net;
 
     while(getline(fs, line)){
         size_t pos = 0;
         pos = getToken(pos, line, token);
-            
-        // register netfor first time
-        pos = getToken(pos, line, token);
-        Net* net = registerNet(token);
-        done = false;
 
-        int count = 0;
+        // register netfor first time
+        if(token == "NET"){
+            pos = getToken(pos, line, token);
+            net = registerNet(token);
+        }
+        else if(token != ";"){
+            Cell* cell = registerCell(token);
+            cell->addNet(net);
+        }
+
         while(getToken(pos, line, token) != string::npos){
             pos = getToken(pos, line, token);
             if(token == ";"){
                 break;
-                done = true;
             }
             Cell* cell = registerCell(token);
             cell->addNet(net);
-            ++count;
         }
     }
     for(auto it = total_cell_.begin(); it != total_cell_.end(); ++it){
@@ -235,9 +237,18 @@ void PartitionMgr::reconstruct(int index){
     << " B size:" << bucket_b_->getSize() <<endl;
 }
 
-bool PartitionMgr::moveCell(){
+bool PartitionMgr::moveCell(int iter){
     int partial_sum = 0, index = 0, max = 0;
-    
+    int times = total_cell_.size();
+    if(iter <= 2)
+        times = ceil(times * 0.7);
+    else if(iter <= 5)
+        times = ceil(times *  0.5);
+    else if(iter <= 10)
+        times = ceil(times * 0.3);
+    else
+        times = ceil(times * 0.2);
+
     for(int i = 0; i < total_cell_.size(); ++i){
         bool isA; 
         Cell* a = bucket_a_->getMaxGain();
@@ -251,17 +262,16 @@ bool PartitionMgr::moveCell(){
             isA = false;
         else{
             cout << "break\n";
-            exit(0);
             break;
         }
         
         Cell* cell = isA ? a : b;
-        cout << "#" << i+1 << ": moving " << cell->getName() 
-        << " with gain " << cell->getGain();
-        if(isA)
-            cout << " from A to B \r";
-        else
-            cout << " from B to A \r";
+        // cout << "#" << i+1 << ": moving " << cell->getName() 
+        // << " with gain " << cell->getGain();
+        // if(isA)
+        //     cout << " from A to B \r";
+        // else
+        //     cout << " from B to A \r";
         partial_sum += cell->getGain();
         
         if(partial_sum > max){

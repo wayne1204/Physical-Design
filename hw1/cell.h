@@ -31,7 +31,7 @@ public:
     string getName() {return name_;}
     void addNet(Net* n) {connected_nets_.push_back(n);}
     int getNetNum() {return connected_nets_.size();}
-    vector<Net*> getNets() {return connected_nets_;}
+    vector<Net*>& getNets() {return connected_nets_;}
 
     // for linked list
     void setNext(Cell* c) {next_ = c;}
@@ -61,8 +61,8 @@ public:
     void reset();
     int getASize() {return partition_a_.size();}
     int getBSize() {return partition_b_.size();}
-    set<Cell*> GetPartionA() {return partition_a_;}
-    set<Cell*> GetPartionB() {return partition_b_;}
+    set<Cell*>& GetPartionA() {return partition_a_;}
+    set<Cell*>& GetPartionB() {return partition_b_;}
 
 private:
     string name_;

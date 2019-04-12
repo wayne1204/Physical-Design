@@ -23,7 +23,7 @@ public:
     void initGain();
     void reconstruct(int index);
     void updateGain(Cell* base_cell);
-    bool moveCell();
+    bool moveCell(int iter);
     int countCost();
     void output(const char* fname);
 
@@ -35,8 +35,8 @@ private:
     Bucket* bucket_b_;
 
     // for reconstruct
-    set <Cell*> set_a_initial;
-    set <Cell*> set_b_initial;
+    unordered_set <Cell*> set_a_initial;
+    unordered_set <Cell*> set_b_initial;
     vector<Cell*> moving;
 
     // total

@@ -23,8 +23,6 @@ public:
     }
     int getSize() {return total_cells_;}
     void init(int max_gain, double low, double up);
-    // void setMaxGain(int gain);
-    // void setBound(double up, double low);
     void insert(Cell* c);
     void remove(Cell* c);
     void clear();
