@@ -39,6 +39,7 @@ void PartitionMgr::parse(const char* fname){
     Net* net;
 
     while(getline(fs, line)){
+        // cout << line <<endl;
         size_t pos = 0;
         pos = getToken(pos, line, token);
 
@@ -57,6 +58,10 @@ void PartitionMgr::parse(const char* fname){
             if(token == ";"){
                 break;
             }
+            Cell* cell = registerCell(token);
+            cell->addNet(net);
+        }
+        if(token != ";"){
             Cell* cell = registerCell(token);
             cell->addNet(net);
         }
@@ -233,7 +238,7 @@ void PartitionMgr::reconstruct(int index){
             nets[j]->addCell(moving[i], !isA);
         }
     }
-    cout << "Finish reconstructing " << "A size:" << bucket_a_->getSize() 
+    cout << "A size:" << bucket_a_->getSize() 
     << " B size:" << bucket_b_->getSize() <<endl;
 }
 
@@ -249,7 +254,7 @@ bool PartitionMgr::moveCell(int iter){
     else
         times = ceil(times * 0.2);
 
-    for(int i = 0; i < total_cell_.size()/2; ++i){
+    for(int i = 0; i < times; ++i){
         bool isA; 
         Cell* a = bucket_a_->getMaxGain();
         Cell* b = bucket_b_->getMaxGain();
@@ -290,9 +295,8 @@ bool PartitionMgr::moveCell(int iter){
             bucket_a_->insert(cell);
         }
     }
-    printf("Largest Partial sum: %d   ( at step: %d )     \n", max , index+1);
-    if (max > 0)
-        reconstruct(index);
+    printf("Largest Gain:%d (at step: %d) | ", max , index+1);
+    reconstruct(index);
     return (max > 0);
 }
 

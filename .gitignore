@@ -1,5 +1,10 @@
+# general
 .vscode/*
+
+# hw1
 hw1/.vscode/*
+fm
 
 *.o
+*.out
 settings.json
