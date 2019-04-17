@@ -14,6 +14,7 @@ int main(int argc, char** argv){
     
     cout << "\nIteration# 1 \n";
     mgr.initGain();
+    // mgr.moveCell(count);
     while(mgr.moveCell(count)){
         cout << "\nIteration#" << ++count <<endl;
         mgr.initGain();

@@ -1,10 +1,8 @@
 # general
 .vscode/*
-
-# hw1
-hw1/.vscode/*
-fm
+.DS_Store
 
 *.o
 *.out
+*.zip
 settings.json

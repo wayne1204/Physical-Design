@@ -49,19 +49,22 @@ void PartitionMgr::parse(const char* fname){
             net = registerNet(token);
         }
         else if(token != ";"){
+            // cout << token;
             Cell* cell = registerCell(token);
             cell->addNet(net);
         }
 
         while(getToken(pos, line, token) != string::npos){
             pos = getToken(pos, line, token);
+            // cout << token;
             if(token == ";"){
                 break;
             }
             Cell* cell = registerCell(token);
             cell->addNet(net);
         }
-        if(token != ";"){
+        if(token != ";" && token != ""){
+            // cout << token << token.size() << endl;
             Cell* cell = registerCell(token);
             cell->addNet(net);
         }
