@@ -6,3 +6,5 @@
 *.out
 *.zip
 settings.json
+a*
+example*
