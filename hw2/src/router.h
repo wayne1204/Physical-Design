@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <math.h>
+#include <unordered_set>
 using namespace std;
 
 // forward declaration
@@ -20,6 +21,8 @@ public:
     void min_heapify(int index);
     void decrease_key(Vertex* v);
     void insert(Vertex* v);
+    void reserve(int size);
+    void push_back(Vertex* v);
     bool empty() { return A.empty(); }
 private:
     vector<Vertex*> A;
@@ -28,12 +31,12 @@ private:
 
 class Vertex{
 public:
-    Vertex(int n1, int n2){
+    Vertex(short n1, short n2){
         _x = n1;
         _y = n2;
     }
-    int getX() {return _x; }
-    int getY() {return _y; }
+    int getX(); 
+    int getY(); 
     void connect(int weight, Vertex* node);
     void addEdge(Edge* e){_edges.push_back(e);}
     int getNoEdges() {return _edges.size(); }
@@ -48,8 +51,8 @@ private:
     vector<Edge*> _edges;
     Vertex* _previous;
     double _distance;
-    int _x;
-    int _y;
+    short _x;
+    short _y;
 };
 
 
@@ -76,20 +79,30 @@ private:
 class Router
 {
 public:
+    void init();
     void buildGraph(int h, int v, int h_c, int v_c);
+    void setCoordinate(int , int, int, int);
     void adjustCapacity(int x1, int y1, int x2, int y2, int cap);
-    void initSingleSource(int);
+    void initSingleSource(int, int);
     bool relax(Vertex* n1, Vertex* n2, Edge* edge);
-    void Dijkstra(int, int);
+    void Dijkstra(int, int, int, int);
     void traceback(int, int, int, int&, stringstream&);
-    // void writeBracket()
+    void writeConnect(Vertex*, Vertex*, int, int, stringstream& );
     void updateEdge(Vertex* v1, Vertex* v2);
 
 private:
-    int horizon;
-    int vertical;
-    int capacity;
+    // coored
+    int _lower_left_x;
+    int _lower_left_y;
+    int _width;
+    int _height;
+
+    int _horizon;
+    int _vertical;
+    int _h_capacity;
+    int _v_capacity;
     vector<vector<Vertex*> > _graph;
+    unordered_set<int> _existing_path;
 };
 
 #endif

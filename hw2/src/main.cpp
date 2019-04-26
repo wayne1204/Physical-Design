@@ -86,9 +86,11 @@ int main(int argc, char **argv)
 
     /* =================================== */
     /* Show net(subnet) information after net decomposition */
+    // db.ShowNetInfo();
 
-    db.ShowNetInfo();
     /* =================================== */
+    router.setCoordinate(db.GetLowerLeftX(), db.GetLowerLeftY(), 
+                         db.GetTileWidth(), db.GetTileHeight());
     router.buildGraph(db.GetHoriGlobalTileNo(), db.GetVertiGlobalTileNo(), 
                       db.GetLayerHoriCapacity(0), db.GetLayerVertiCapacity(1));
     for(int i = 0; i < db.GetCapacityAdjustNo(); ++i){
@@ -99,21 +101,26 @@ int main(int argc, char **argv)
     fstream ofs(argv[2], ios::out);
     for(int i = 0; i < db.GetNetNo(); ++i){
         stringstream ss;
-        int length;
+        int length = 0;
         Net& net = db.GetNetByPosition(i);
+        router.init();
+        cout << "...generating steiner tree for Net# " << i << " subnets: "
+            << net.GetSubNetNo() <<"\n";
+
         for(int j = 0; j < net.GetSubNetNo(); ++j){
-            cout << j << endl;
             SubNet& sn = net.GetSubNet(j);
-            router.Dijkstra(sn.GetSourcePinGx(), sn.GetSourcePinGy());
+            // cout << 'd' << endl;
+            router.Dijkstra(sn.GetSourcePinGx(), sn.GetSourcePinGy(), sn.GetTargetPinGx(), sn.GetTargetPinGy());
+            // cout << 't' << endl;
             router.traceback(sn.GetTargetPinGx(), sn.GetTargetPinGy(), 0, length, ss);
         }
-        ofs << net.GetName() << ' ' << net.GetPinUid(i) << ' ' << length << endl;
-        // ofs << db.GetSubNet(i).G
+        ofs << net.GetName() << ' ' << net.GetUid() << ' ' << length << endl;
         ofs << ss.str() << "!\n";
     }
+    ofs.close();
 
     {
-        cout << "[Verify]" << endl;
+        cout << "\n[Verify]" << endl;
         char cmd[100];
 
         //sprintf(cmd, "./eval2008.pl %s %s", argv[1], argv[2]);

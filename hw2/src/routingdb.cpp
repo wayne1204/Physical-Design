@@ -223,11 +223,11 @@ void RoutingDB::ShowInfo()
 
     cout << "..# of net: " << GetNetNo() << endl;
 
-    for (int i = 0; i < GetNetNo(); i++)
-    {
-        Net &n = GetNetByPosition(i);
-        n.ShowInfo();
-    }
+    // for (int i = 0; i < GetNetNo(); i++)
+    // {
+    //     Net &n = GetNetByPosition(i);
+    //     n.ShowInfo();
+    // }
 
     cout << endl;
 }

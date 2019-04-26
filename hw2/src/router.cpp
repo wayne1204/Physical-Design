@@ -1,4 +1,5 @@
 #include <vector>
+#include <math.h>
 #include "router.h"
 
 // ===============[ my_queue]===============
@@ -30,6 +31,14 @@ void my_queue::insert(Vertex* v){
     A[index] = v;
 }
 
+void my_queue::push_back(Vertex* v){
+    A.push_back(v);
+}
+
+void my_queue::reserve(int size){
+    A.reserve(size);
+}
+
 Vertex* my_queue::extract_min(){
     if(A.empty())
         return NULL;
@@ -55,13 +64,30 @@ void my_queue::decrease_key(Vertex* v){
 }
 
 // ===============[ Vertex ]===============
+int Vertex::getX(){
+    return _x;
+}
+
+int Vertex::getY(){
+    return _y;
+}
+
 void Vertex::connect(int weight, Vertex* node){
     Edge* e = new Edge(weight, node);
     _edges.push_back(e);  
 }
 
+
 // ===============[ Router ]===============
+void Router::init(){
+    _existing_path.clear();
+}
+
 void Router::buildGraph(int h, int v, int h_c, int v_c){
+    _horizon = h;
+    _vertical = v;
+    _h_capacity = h_c;
+    _v_capacity = v_c;
     for(int i = 0; i < h; ++i){
         vector<Vertex*> row;
         _graph.push_back(row);
@@ -107,6 +133,13 @@ void Router::buildGraph(int h, int v, int h_c, int v_c){
     }
 }
 
+void Router::setCoordinate(int low_x, int low_y, int w, int h){
+    _lower_left_x = low_x;
+    _lower_left_y = low_y;
+    _width = w;
+    _height = h;
+}
+
 void Router::adjustCapacity(int x1, int y1, int x2, int y2, int cap){
     Vertex* v1 = _graph[x1][y1];
     Vertex* v2 = _graph[x2][y2];
@@ -126,14 +159,14 @@ void Router::adjustCapacity(int x1, int y1, int x2, int y2, int cap){
 }
 
 
-void Router::initSingleSource(int start_node){
-    for(int i = 0; i < horizon; ++i){
-        for(int j = 0; j < vertical; ++j){
+void Router::initSingleSource(int s_x, int s_y){
+    for(int i = 0; i < _horizon; ++i){
+        for(int j = 0; j < _vertical; ++j){
             _graph[i][j]->setDistance(10000);
             _graph[i][j]->setPrevious(NULL);
         }
     }
-    _graph[start_node/vertical][start_node%vertical]->setDistance(0);
+    _graph[s_x][s_y]->setDistance(0);
 }
 
 
@@ -146,60 +179,84 @@ bool Router::relax(Vertex* n1, Vertex* n2, Edge* edge){
     return false;
 }
 
-void Router::Dijkstra(int sx, int sy){
-    int start_node = sx * vertical + sy;
-    cout << sx << sy <<endl;
-    initSingleSource(start_node);
+void Router::Dijkstra(int sx, int sy, int tx, int ty){
+    initSingleSource(sx, sy);
     my_queue mypq;
-    for(int i = 0; i < horizon; ++i){
-        for(int j = 0; j < vertical; ++ j){
-            mypq.insert(_graph[i][j]);
+    mypq.reserve(_horizon * _vertical);
+    for(int i = 0; i < _horizon; ++i){
+        for(int j = 0; j < _vertical; ++ j){
+            if(i == sx && j == sy)
+                mypq.insert(_graph[i][j]);
+            else
+                mypq.push_back(_graph[i][j]);
         }
     }
-    
-    while(!mypq.empty()){
+    bool stop = false;
+    // cout << "bang" << sx << " " << sy << " " << tx << " " << ty <<endl;
+    while(!mypq.empty() && !stop){
         Vertex* u = mypq.extract_min();
-        // cout << u->getX() << " " << u->getY() << " ===================== "<< u->getDistance()  <<"\n";
         for(int i = 0; i < u->getNoEdges(); ++i){
-            // cout << edge->getNode()->getX() << " " << edge->getNode()->getY() << "\n";
             Edge* e = u->getEdge(i);
             if(relax(u, e->getNode() , e)){
-                mypq.decrease_key(e->getNode());
+                // mypq.decrease_key(e->getNode());
+                mypq.insert(e->getNode());
             }
+            if(u->getEdge(i)->getNode()->getX() == tx && u->getEdge(i)->getNode()->getX() == ty)
+                stop = true;
         }
 
-        // for(int i = 0; i < horizon; ++i){
-        //     for(int j = 0; j < vertical; ++j){
-        //         cout << _graph[i][j].getDistance() << " ";
+        // for(int j = _vertical - 1; j >= 0; --j){
+        //     for(int i = 0; i < _horizon; ++i){
+        //         cout << _graph[i][j]->getDistance() << " ";
         //     }
         //     cout <<endl;
         // }
+        // cout << endl;
     }
 }
 
 // layer0 : horizon layer1 vertical
+// isVertical 0 -> H  1 -> V
 void Router::traceback(int tx, int ty, int layer, int& wire_length, stringstream& ss){
     Vertex* v = _graph[tx][ty];
 
-    if(v->getPrevious() != NULL){
-        bool isHorizon = (v->getY() == v->getPrevious()->getY()) ? true : false;
-        
+    while(v->getPrevious() != NULL){
+        bool isVertical = (v->getX() == v->getPrevious()->getX()) ? true : false;
         // via
-        if(isHorizon != layer){
-            ss << "(" << v->getX() << "," << v->getY() << ',' << layer+1 << ")-("
-               << v->getX() << "," << v->getY() << ',' << isHorizon+1 << ")\n";
+        if(isVertical != layer){
+            writeConnect(v, v, layer+1, isVertical+1, ss);
             ++wire_length;
-            layer = isHorizon;
+            layer = isVertical;
         }
-
-        ss << '(' << tx << ',' << ty << ',' << layer+1 << ")-("
-           << v->getPrevious()->getX() << ',' << v->getPrevious()->getY()
-           << ',' << layer+1  << ")\n";
+        writeConnect(v, v->getPrevious(), layer+1, layer+1, ss);
         updateEdge(v, v->getPrevious());
         ++wire_length;
         v = v->getPrevious();
     }
+
+    if(layer){
+        writeConnect(v, v, layer+1, layer, ss);
+        ++wire_length;
+    }
 }
+
+// if there is already net skip it
+void Router::writeConnect(Vertex* v1, Vertex* v2, int l1, int l2, stringstream& ss){
+    int key1 = l1*_horizon*_vertical + v1->getX()*_vertical+ v1->getY();
+    int key2 = l2*_horizon*_vertical + v2->getX()*_vertical+ v2->getY();
+    if(_existing_path.find(key1) != _existing_path.end() && _existing_path.find(key2) != _existing_path.end())
+        return;
+    _existing_path.insert(key1);
+    _existing_path.insert(key2);
+
+    ss << "(" << _lower_left_x + floor(_width * (v1->getX() + 0.5))
+       << "," << _lower_left_y + floor(_height * (v1->getY() + 0.5)) 
+       << ',' << l1 
+       << ")-(" << _lower_left_x + floor(_width * (v2->getX() + 0.5))
+       << "," << _lower_left_y + floor(_height * (v2->getY() + 0.5))  
+       << ',' << l2 << ")\n";
+}
+
 
 void Router::updateEdge(Vertex* v1, Vertex* v2){
     for(int i = 0; i < v1->getNoEdges(); ++i){
