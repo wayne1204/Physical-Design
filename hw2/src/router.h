@@ -6,13 +6,17 @@
 #include <vector>
 #include <math.h>
 #include <unordered_set>
+#include <queue>
 using namespace std;
+
 
 // forward declaration
 class my_queue;
 class Vertex;
 class Edge;
 class Router;
+class mycomparision;
+
 
 class my_queue
 {
@@ -22,8 +26,10 @@ public:
     void decrease_key(Vertex* v);
     void insert(Vertex* v);
     void reserve(int size);
-    void push_back(Vertex* v);
+    void push(Vertex* v);
+    
     bool empty() { return A.empty(); }
+    int size() {return A.size(); }
 private:
     vector<Vertex*> A;
 };
@@ -88,6 +94,7 @@ public:
     void Dijkstra(int, int, int, int);
     void traceback(int, int, int, int&, stringstream&);
     void writeConnect(Vertex*, Vertex*, int, int, stringstream& );
+    int getDirection(Vertex* v1, Vertex* v2, int, int);
     void updateEdge(Vertex* v1, Vertex* v2);
 
 private:
@@ -103,6 +110,14 @@ private:
     int _v_capacity;
     vector<vector<Vertex*> > _graph;
     unordered_set<int> _existing_path;
+};
+
+class mycomparision
+{
+public:
+    bool operator() ( Vertex* v1,  Vertex* v2){
+        return(v1->getDistance() < v2->getDistance());
+    }
 };
 
 #endif

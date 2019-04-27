@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 
     /* =================================== */
     /* Show net(subnet) information after net decomposition */
-    // db.ShowNetInfo();
+    db.ShowNetInfo();
 
     /* =================================== */
     router.setCoordinate(db.GetLowerLeftX(), db.GetLowerLeftY(), 
@@ -109,9 +109,7 @@ int main(int argc, char **argv)
 
         for(int j = 0; j < net.GetSubNetNo(); ++j){
             SubNet& sn = net.GetSubNet(j);
-            // cout << 'd' << endl;
             router.Dijkstra(sn.GetSourcePinGx(), sn.GetSourcePinGy(), sn.GetTargetPinGx(), sn.GetTargetPinGy());
-            // cout << 't' << endl;
             router.traceback(sn.GetTargetPinGx(), sn.GetTargetPinGy(), 0, length, ss);
         }
         ofs << net.GetName() << ' ' << net.GetUid() << ' ' << length << endl;

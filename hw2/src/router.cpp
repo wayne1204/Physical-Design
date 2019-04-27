@@ -1,8 +1,12 @@
 #include <vector>
 #include <math.h>
+#include <queue>
+#include <iomanip>
 #include "router.h"
 
 // ===============[ my_queue]===============
+
+
 void my_queue::min_heapify(int index){
     int l = index * 2 + 1;
     int r = index * 2 + 2;
@@ -31,7 +35,7 @@ void my_queue::insert(Vertex* v){
     A[index] = v;
 }
 
-void my_queue::push_back(Vertex* v){
+void my_queue::push(Vertex* v){
     A.push_back(v);
 }
 
@@ -181,6 +185,7 @@ bool Router::relax(Vertex* n1, Vertex* n2, Edge* edge){
 
 void Router::Dijkstra(int sx, int sy, int tx, int ty){
     initSingleSource(sx, sy);
+    // priority_queue<Vertex*, vector<Vertex*>, mycomparision> mypq ;
     my_queue mypq;
     mypq.reserve(_horizon * _vertical);
     for(int i = 0; i < _horizon; ++i){
@@ -188,21 +193,20 @@ void Router::Dijkstra(int sx, int sy, int tx, int ty){
             if(i == sx && j == sy)
                 mypq.insert(_graph[i][j]);
             else
-                mypq.push_back(_graph[i][j]);
+                mypq.push(_graph[i][j]);
         }
     }
     bool stop = false;
-    // cout << "bang" << sx << " " << sy << " " << tx << " " << ty <<endl;
+    cout << "\nbang" << sx << " " << sy << " " << tx << " " << ty <<endl;
     while(!mypq.empty() && !stop){
         Vertex* u = mypq.extract_min();
+        cout << setw(8) << mypq.size() << '\r';
         for(int i = 0; i < u->getNoEdges(); ++i){
             Edge* e = u->getEdge(i);
             if(relax(u, e->getNode() , e)){
                 // mypq.decrease_key(e->getNode());
                 mypq.insert(e->getNode());
             }
-            if(u->getEdge(i)->getNode()->getX() == tx && u->getEdge(i)->getNode()->getX() == ty)
-                stop = true;
         }
 
         // for(int j = _vertical - 1; j >= 0; --j){
@@ -219,7 +223,6 @@ void Router::Dijkstra(int sx, int sy, int tx, int ty){
 // isVertical 0 -> H  1 -> V
 void Router::traceback(int tx, int ty, int layer, int& wire_length, stringstream& ss){
     Vertex* v = _graph[tx][ty];
-
     while(v->getPrevious() != NULL){
         bool isVertical = (v->getX() == v->getPrevious()->getX()) ? true : false;
         // via
@@ -233,7 +236,7 @@ void Router::traceback(int tx, int ty, int layer, int& wire_length, stringstream
         ++wire_length;
         v = v->getPrevious();
     }
-
+    // cout << v->getX() << v->getY()  << endl;
     if(layer){
         writeConnect(v, v, layer+1, layer, ss);
         ++wire_length;
@@ -242,12 +245,10 @@ void Router::traceback(int tx, int ty, int layer, int& wire_length, stringstream
 
 // if there is already net skip it
 void Router::writeConnect(Vertex* v1, Vertex* v2, int l1, int l2, stringstream& ss){
-    int key1 = l1*_horizon*_vertical + v1->getX()*_vertical+ v1->getY();
-    int key2 = l2*_horizon*_vertical + v2->getX()*_vertical+ v2->getY();
-    if(_existing_path.find(key1) != _existing_path.end() && _existing_path.find(key2) != _existing_path.end())
+    int key = getDirection(v1, v2, l1, l2)*_horizon*_vertical + v1->getX()*_vertical+ v1->getY();
+    if(_existing_path.find(key) != _existing_path.end())
         return;
-    _existing_path.insert(key1);
-    _existing_path.insert(key2);
+    _existing_path.insert(key);
 
     ss << "(" << _lower_left_x + floor(_width * (v1->getX() + 0.5))
        << "," << _lower_left_y + floor(_height * (v1->getY() + 0.5)) 
@@ -257,6 +258,31 @@ void Router::writeConnect(Vertex* v1, Vertex* v2, int l1, int l2, stringstream& 
        << ',' << l2 << ")\n";
 }
 
+int Router::getDirection(Vertex* v1, Vertex* v2, int l1, int l2){
+    enum direction{
+        up, down, north, south, west, east,
+    };
+    if(l1 != l2){
+        if(l1 - l2 > 0)
+            return up;
+        else
+            return down;
+    }
+    else if(v1->getX() != v2->getX()){
+        if(v1->getX() > v2->getX())
+            return west;
+        else 
+            return east;
+    }
+    else if(v1->getY() != v2->getY()){
+        if(v1->getY() > v2->getY())
+            return south;
+        else 
+            return north;
+    }
+    // should never reach here
+    return -1;
+}
 
 void Router::updateEdge(Vertex* v1, Vertex* v2){
     for(int i = 0; i < v1->getNoEdges(); ++i){
