@@ -17,21 +17,31 @@ class Edge;
 class Router;
 class mycomparision;
 
+enum direction
+{
+    toUp,
+    toDown,
+    toLeft,
+    toRight,
+    ascend,
+    descend,
+    undefined,
+};
 
 class my_queue
 {
 public:
-    Vertex* extract_min();
+    Vertex extract_min();
     void min_heapify(int index);
-    void decrease_key(Vertex* v);
-    void insert(Vertex* v);
+    void decrease_key(Vertex& v);
+    void insert(Vertex& v);
     void reserve(int size);
-    void push(Vertex* v);
-    
+    void push(Vertex& v);
+
     bool empty() { return A.empty(); }
     int size() {return A.size(); }
 private:
-    vector<Vertex*> A;
+    vector<Vertex> A;
 };
 
 
@@ -41,61 +51,69 @@ public:
         _x = n1;
         _y = n2;
     }
-    int getX(); 
-    int getY(); 
-    void connect(int weight, Vertex* node);
-    void addEdge(Edge* e){_edges.push_back(e);}
-    int getNoEdges() {return _edges.size(); }
-    Edge* getEdge(int idx) {return _edges[idx];}
+    int getX() {return _x;}
+    int getY() {return _y;}
+    void connect(int weight, bool b);
+    Edge& getEdge(int idx) {return _edges[idx];}
     void setDistance(double d) {_distance = d; }
     double getDistance() { return _distance; }
-    bool smaller(Vertex* v) { return _distance < v->getDistance(); }
-    void setPrevious(Vertex* v) {_previous = v; } 
-    Vertex* getPrevious() {return _previous; }
+    bool smaller(Vertex& v) { return _distance < v.getDistance(); }
+    void setPrevious(short v) {_direction = v; } 
+    void getPrevious(int&, int&);
+    short getPreDirection() {return _direction; }
 
 private:
-    vector<Edge*> _edges;
-    Vertex* _previous;
+    vector<Edge> _edges;
     double _distance;
     short _x;
     short _y;
+    short _direction;
 };
 
 
 class Edge{
 public:
-    Edge(double x, Vertex* v){
+    Edge(double x, bool b){
         _demand = 0;
         _capacity = x; 
-        _node = v;
+        _exist = b;
     }
 
-    Vertex* getNode() { return _node; }
+    bool exist() {return _exist;}
     void adjust(int c) {_capacity = c; }
     void update() { ++_demand; }
     double getCost() { return pow(2, _demand / _capacity); }
     
 private:
+    bool _exist;
     double _demand;
     double _capacity;
-    Vertex* _node;
 };
 
 
 class Router
 {
 public:
+    Router(){
+        _movement.push_back(0);
+        _movement.push_back(1);
+        _movement.push_back(0);
+        _movement.push_back(-1);
+        _movement.push_back(-1);
+        _movement.push_back(0);
+        _movement.push_back(1);
+        _movement.push_back(0);
+    }
     void init();
     void buildGraph(int h, int v, int h_c, int v_c);
     void setCoordinate(int , int, int, int);
     void adjustCapacity(int x1, int y1, int x2, int y2, int cap);
     void initSingleSource(int, int);
-    bool relax(Vertex* n1, Vertex* n2, Edge* edge);
+    bool relax(Vertex& n1, int);
     void Dijkstra(int, int, int, int);
     void traceback(int, int, int, int&, stringstream&);
-    void writeConnect(Vertex*, Vertex*, int, int, stringstream& );
-    int getDirection(Vertex* v1, Vertex* v2, int, int);
-    void updateEdge(Vertex* v1, Vertex* v2);
+    void writeConnect(Vertex&, int, int, stringstream&);
+    void updateEdge(Vertex& v1, short direction);
 
 private:
     // coored
@@ -108,7 +126,8 @@ private:
     int _vertical;
     int _h_capacity;
     int _v_capacity;
-    vector<vector<Vertex*> > _graph;
+    vector<vector<Vertex> > _graph;
+    vector<int> _movement;
     unordered_set<int> _existing_path;
 };
 

@@ -2,7 +2,7 @@ EXE=gr
 
 CC=g++
 CPPFLAGS = -Wall -O2 -std=c++11 $(OPTFLAGS)       
-# CPPFLAGS = -Wall -g $(OPTFLAGS)     
+CPPFLAGS = -Wall -g $(OPTFLAGS)     
 
 ROOT=$(PWD)
 LIB_PATH=$(ROOT)/lib
