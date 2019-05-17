@@ -7,11 +7,17 @@
 class Floorplanner{
 public:
     Floorplanner(double a) {_alpha = a;}
-    void setCoordinates(int w, int h) {_outline_w = w;  _outline_h = h;}
     void parseBlocks(const char* file);
     void parseNets(const char* file);
+    // for tree struture
     Block* buildTree(Block* root, int index);
-    void genSolution();
+    bool evaluateFeasible(int& width, int& height);
+    void deleteNode(Block* block);
+    void insertNode(Block* block, Block* insert, bool isLeft);
+    void swapNode(Block* block, Block* block2);
+    void perturb();
+    // SA
+    void genSolution(int times);
     void simulateAnnealing();
     void showStatus();
 
@@ -19,6 +25,7 @@ private:
     double _alpha;
     int _outline_w;
     int _outline_h;
+    int _total_sizes;
     Block* _root;
     vector <Net*>  _nets;
     // vector <Terminal*> _terminals;
