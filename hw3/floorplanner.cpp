@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <stack>
 #include <cassert>
 #include <stdlib.h>
@@ -234,8 +235,17 @@ void Floorplanner::swapNode(Block* block1, Block* block2){
         r->setParent(block2);
 }
 
-void Floorplanner::perturb(){
-    _solution_space = _blocks_V;
+int Floorplanner::perturb(){
+    _original.clear();
+    for(int i = 0; i < _block_num; ++i){
+        _original.push_back(new Block(_blocks_V[i]->getName(), _blocks_V[i]->getWidth(), _blocks_V[i]->getHeight()));
+        _original[i]->setParent(_blocks_V[i]->getParent());
+        _original[i]->setLeft(_blocks_V[i]->getLeft());
+        _original[i]->setRight(_blocks_V[i]->getRight());
+        if(_blocks_V[i]->getName() == _root->getName())
+            _original_root = _original[i];
+    }
+    // _original_root = new Block(_root->getName(), _root->getWidth(), _root->getHeight());
     int action = rand() % 3;
     int block_1 = rand() % _block_num;
     int block_2 = rand() % _block_num;
@@ -252,7 +262,7 @@ void Floorplanner::perturb(){
     else if(action == 1){
         if(b1 ->getLeft() != NULL && b1->getRight() != NULL){
             // noob solution
-            return;
+            return 0;
         }
         int r = rand() % 2;
         // cout << "delete " << b1->getName() << 
@@ -263,7 +273,7 @@ void Floorplanner::perturb(){
     else{
         if(b1 == b2->getParent() || b2 == b1->getParent()){
             // noob solution
-            return;
+            return 0;
         }
         // cout << "swap " <<_blocks_V[block_1]->getName() << 
         //      " & " << _blocks_V[block_2]->getName() <<  "\n";
@@ -280,20 +290,23 @@ bool Floorplanner::evaluate(int& width, int& height, int& length){
         stk.pop();
         // cout << blk->getName() << " " ;
         // set coordinates
+        int y;
         if(blk->getParent() == NULL){
             blk->setX(0);
-            mylist.insert(0, blk->getWidth(), blk->getHeight());
+            y = mylist.insert(0, blk->getWidth(), blk->getHeight());
         }
         else if(blk->getParent()->getLeft() == blk){
             // left child
             blk->setX(blk->getParent()->getX() + blk->getParent()->getWidth());
-            mylist.insert(blk->getX(), blk->getX()+blk->getWidth(), blk->getHeight());
+            y = mylist.insert(blk->getX(), blk->getX()+blk->getWidth(), blk->getHeight());
         }
         else{
             // right child
             blk->setX(blk->getParent()->getX());
-            mylist.insert(blk->getX(), blk->getX()+blk->getWidth(), blk->getHeight());
+            y = mylist.insert(blk->getX(), blk->getX()+blk->getWidth(), blk->getHeight());
         }
+        // cout <<blk->getX() << " " << y<<" " << blk->getWidth() <<endl;
+        blk->setY(y);
 
         if(blk->getRight() != NULL){
             stk.push(blk->getRight());
@@ -323,20 +336,21 @@ void Floorplanner::getNormFactor(){
         evaluate(width, height, length);
         // _blocks_V = bb;
         cout << "get solution " << width << " " << height << " " << length << "\n";
-        total_area += (width*height);
-        total_l += length;
+        total_area += (width*height/ times);
+        total_l += length/ times;
         perturb();
     }
-    _area_norm = (total_area / times);
-    _wire_norm = (total_l / times);
+    _area_norm = total_area ;
+    _wire_norm = (total_l);
     cout << _area_norm << " " << _wire_norm << endl;
 }
 
-void Floorplanner::simulateAnnealing(){
-    double temp = 1000;
-    double gamma = 0.9;
-    int threshold = 1;
+void Floorplanner::simulateAnnealing(stringstream& ss){
+    double temp = 1;
+    double gamma = 0.9999;
+    int threshold = 0.001;
     int w = 0, h = 0, l = 0;
+    bool output = false;
     evaluate(w, h ,l);
     double current_cost = _alpha * w * h / _area_norm + (1 - _alpha) * l / _wire_norm;
     printf("current_cost %.4f \n", current_cost);
@@ -345,23 +359,57 @@ void Floorplanner::simulateAnnealing(){
         perturb();
         int w = 0, h = 0, l = 0;
         evaluate(w, h ,l);
-        cout << "get solution " << w << " " << h << " " << l << "\n";
-        double cost = w * h / _area_norm + l / _wire_norm;
-        if(cost < current_cost){
+        double cost = _alpha * w * h / _area_norm + (1 - _alpha) * l / _wire_norm;
+        double prob = (double) rand() / (RAND_MAX + 1.0);
+
+        printf("get solution: %d %d %d cost=%.4f current_cost=%.4f\n", w, h, l ,cost,current_cost);
+        printf("prob: %.4f  delta_c:%.4f  threshold:%.4f\n", prob, (current_cost - cost)/100, exp((current_cost - cost)/ temp* 100));
+        
+        if(cost < current_cost || prob < exp((current_cost - cost)/ temp*100)){
+            cout << "take !\n";
             current_cost = cost;
-            
-        } 
-        else{
-            double prob = (double) rand() / (RAND_MAX + 1.0);
-            if(prob < exp((current_cost - cost)/ temp)){
-                current_cost = cost;
-            }else{
-                // restore
-                // _blocks_V = bb;
+            if(w < _outline_w && h < _outline_h){
+                ss.str("");
+                ss << _alpha * w * h +  (1 - _alpha) * l << "\n";
+                ss << l << "\n";
+                ss << (w * h) << "\n";
+                ss << w << " " << h << "\n";
+                ss << "0.2" << endl;
+                stack<Block*> stk;
+                stk.push(_root);
+                while(!stk.empty()){
+                    Block* block = stk.top();
+                    stk.pop();
+                    ss << block->getName()<< " " <<block->getX() << " " << block->getY() << " "
+                        <<block->getX() + block->getWidth() << " " << block->getY() + block->getHeight() <<"\n";
+                    if(block->getRight() != NULL){
+                        stk.push(block->getRight());
+                    }
+                    if(block->getLeft() != NULL){
+                        stk.push(block->getLeft());
+                    }
+                }
+                output = true;
+                // break;
             }
+        } 
+        
+        else{
+            // restore
+            _blocks_V = _original;
+            _root = _original_root;
         }
         temp *= gamma;
+        if(!output && temp < 5 )
+            temp = 1000;
     }
+}
+
+
+void Floorplanner::output(char* fname, double t, stringstream& ss){
+    fstream fs(fname, ios::out);
+    fs << ss.str();
+
 }
 
 void Floorplanner::showStatus(){

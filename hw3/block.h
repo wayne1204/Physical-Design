@@ -85,9 +85,10 @@ public:
     LinkedList(){
         _first = NULL;
     }
-    void insert(int x1, int x2, int height);
+    int insert(int x1, int x2, int height);
     int getMaxHeight();
     int getMaxWidth();
+    // int getY(int x1, int x2);
     void print();
     void clear();
 
