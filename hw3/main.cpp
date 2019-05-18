@@ -13,7 +13,7 @@ int main(int argc, char** argv)
     planner->parseBlocks(argv[2]);
     planner->parseNets(argv[3]);
     planner->showStatus();
-    planner->genSolution(1);
-    // planner->simulateAnnealing();
+    planner->getNormFactor();
+    planner->simulateAnnealing();
     return 0;
 }

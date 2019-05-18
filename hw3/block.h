@@ -16,7 +16,12 @@ public:
         _parent = NULL;
         _left = NULL;
         _right = NULL;
+        _x = 0;
+        _y =0;
     }
+    void setName(string n) {_name = n;}
+    void setWidth(int i) {_width = i;}
+    void setHeight(int i) {_height = i;}
     void setX(int x) {_x = x;}
     void setY(int y) {_y = y;}
     void setParent(Block* b) {_parent = b;}
@@ -34,6 +39,7 @@ public:
 
     void showInfo();
     void rotate();
+
 private:
     int _width;
     int _height;

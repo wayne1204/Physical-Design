@@ -11,25 +11,29 @@ public:
     void parseNets(const char* file);
     // for tree struture
     Block* buildTree(Block* root, int index);
-    bool evaluateFeasible(int& width, int& height);
     void deleteNode(Block* block);
     void insertNode(Block* block, Block* insert, bool isLeft);
     void swapNode(Block* block, Block* block2);
     void perturb();
+    bool evaluate(int& width, int& height, int& length);
     // SA
-    void genSolution(int times);
+    void getNormFactor();
     void simulateAnnealing();
     void showStatus();
 
 private:
-    double _alpha;
     int _outline_w;
     int _outline_h;
     int _total_sizes;
+    int _block_num;
+    int _terminal_num;
+    int _area_norm;
+    int _wire_norm;
+    double _alpha;
     Block* _root;
     vector <Net*>  _nets;
-    // vector <Terminal*> _terminals;
+    vector <Block* > _terminals_V;
     vector <Block* > _blocks_V;
+    vector <Block* > _solution_space;
     unordered_map<string, Block*> _blocks;
-    unordered_map<string, Terminal*> _terminals;
 };

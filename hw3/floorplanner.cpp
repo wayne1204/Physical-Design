@@ -1,8 +1,11 @@
 #include <iostream>
 #include <fstream>
 #include <stack>
-
+#include <cassert>
 #include <stdlib.h>
+#include "limits.h"
+#include <math.h>
+
 #include "floorplanner.h"
 #include "block.h"
 using namespace std;
@@ -10,8 +13,6 @@ using namespace std;
 void Floorplanner::parseBlocks(const char* file){
     fstream fs(file, ios::in);
     string token, name;
-    int n_block, n_termianl;
-    bool readBlock = true;
     int total_block_size = 0;
 
     cout << "... parse blocks " << endl;
@@ -24,12 +25,12 @@ void Floorplanner::parseBlocks(const char* file){
         }
         else if(token == "NumBlocks:"){
             fs >> token;
-            n_block = atoi(token.c_str());
+            _block_num = atoi(token.c_str());
         }
         else if(token == "NumTerminals:"){
             fs >> token;
-            n_termianl = atoi(token.c_str());
-            for(int i = 0; i < n_block; ++i){
+            _terminal_num = atoi(token.c_str());
+            for(int i = 0; i < _block_num; ++i){
                 fs >> token;
                 name = token;
                 
@@ -42,15 +43,20 @@ void Floorplanner::parseBlocks(const char* file){
                 _blocks_V.push_back(block);
                 _blocks.emplace(name, block);
             }
-            for(int i = 0; i < n_termianl; ++i){
+            for(int i = 0; i < _terminal_num; ++i){
                 fs >> token;
                 name = token;
                 fs >> token >> token;
                 int x = atoi(token.c_str());
                 fs >> token;
                 int y = atoi(token.c_str());
-                Terminal* ter = new Terminal(name, x, y);
-                _terminals.emplace(name, ter);
+                // Terminal* ter = new Terminal(name, x, y);
+                // _terminals.emplace(name, ter);
+                Block* ter = new Block(name, 0, 0);
+                ter->setX(x);
+                ter->setY(y);
+                _blocks.emplace(name, ter);
+                _terminals_V.push_back(ter);
             }
         }
         else{
@@ -76,20 +82,14 @@ void Floorplanner::parseNets(const char* file){
         for(int j = 0; j < n_degree; ++j){
             fs >> token;
             auto it = _blocks.find(token);
-            if(it == _blocks.end()){
-                auto it = _terminals.find(token);
-                n->addTerminal(it->second);
-            }
-            else{
-                n->addBlock(it->second);
-            }
+            n->addBlock(it->second);
         }
         _nets.push_back(n);
     }
 }
 
 Block* Floorplanner::buildTree(Block* root, int index){
-    if(index < _blocks_V.size()){
+    if(index < _block_num){
         // cout << index << " " << _blocks_V[index]->getName() << endl;
         root = _blocks_V[index];
         root->setLeft(buildTree(root->getLeft() , (index+1)*2-1));
@@ -105,54 +105,68 @@ Block* Floorplanner::buildTree(Block* root, int index){
 void Floorplanner::deleteNode(Block* block){
     // case 1. no child
     if(block->getLeft() == NULL && block->getRight() == NULL){
-        // TODO
         if(block == block->getParent()->getLeft()){
             block->getParent()->setLeft(NULL);
         }else{
             block->getParent()->setRight(NULL);
         }
-        // block->setParent(NULL);
+        block->setParent(NULL);
     }
     // case 2. one child
     else if (block->getLeft() == NULL){
-        if(block == block->getParent()->getLeft()){
-            block->getParent()->setLeft(block->getRight());
-        }else{
-            block->getParent()->setRight(block->getRight());
+        if(block == _root){
+            _root = block->getRight();
+            _root->setParent(NULL);
         }
-        block->getRight()->setParent(block->getParent());
+        else{
+            if(block == block->getParent()->getLeft()){
+                block->getParent()->setLeft(block->getRight());
+            }else{
+                block->getParent()->setRight(block->getRight());
+            }
+            block->getRight()->setParent(block->getParent());
+        }
+        block->setParent(NULL);
+        block->setRight(NULL);
     }   
     else if(block->getRight() == NULL){
-        if(block == block->getParent()->getLeft()){
-            block->getParent()->setLeft(block->getLeft());
-        }else{
-            block->getParent()->setRight(block->getLeft());
+        if(block == _root){
+            _root = block->getLeft();
+            _root->setParent(NULL);
         }
-        block->getLeft()->setParent(block->getParent());
+        else{
+            if(block == block->getParent()->getLeft()){
+                block->getParent()->setLeft(block->getLeft());
+            }else{
+                block->getParent()->setRight(block->getLeft());
+            }
+            block->getLeft()->setParent(block->getParent());
+        }
+        block->setParent(NULL);
+        block->setLeft(NULL);
     }
     // case 3. two child
     else{
-        // while not leaf
-        Block* replace;
         while(block->getLeft() != NULL || block->getRight() != NULL){
-            if(block->getLeft() != NULL)
-                replace = block->getLeft();
-            else
-                replace = block->getRight();
+            bool isLeft = block->getLeft() != NULL;
+            Block* replace = (isLeft) ? block->getLeft() : block->getRight();
+            if(block == _root){
+                _root = replace;
+                _root->setParent(NULL);
+            }
             if(block == block->getParent()->getLeft()){
-                replace->setParent(block->getParent());
                 block->getParent()->setLeft(replace);
             }else{
-                replace->setParent(block->getParent());
                 block->getParent()->setRight(replace);
             }
-            block = replace;
+            replace->setParent(block->getParent());
         }
     }
 }
 
 void Floorplanner::insertNode(Block* block, Block* insert, bool isLeft){
-    // TODO
+    insert->setLeft(NULL);
+    insert->setRight(NULL);
     Block* child = isLeft ? block->getLeft() : block->getRight();
     if(isLeft){
         block->setLeft(insert);
@@ -172,54 +186,99 @@ void Floorplanner::insertNode(Block* block, Block* insert, bool isLeft){
 }
 
 void Floorplanner::swapNode(Block* block1, Block* block2){
-    // TODO
-    Block* parent_1 = block1->getParent();
-    Block* left_1 = block1->getLeft();
-    Block* right_1 = block1->getRight();
+    bool isLeft_1;
+    if(block1->getParent() != NULL)
+        isLeft_1 = (block1 == block1->getParent()->getLeft());
+    Block* p = block1->getParent();
+    Block* l = block1->getLeft();
+    Block* r = block1->getRight();
 
     block1->setParent(block2->getParent());
+    if(block2->getParent() == NULL){
+        _root = block1;
+    }
+    else{
+        if(block2 == block2->getParent()->getLeft()){
+            block2->getParent()->setLeft(block1);
+        }else{
+            block2->getParent()->setRight(block1);
+        }
+    }
+    
     block1->setLeft(block2->getLeft());
+    if(block2->getLeft() != NULL){
+        block2->getLeft()->setParent(block1);
+    }
     block1->setRight(block2->getRight());
-    block2->setParent(parent_1);
-    block2->setLeft(left_1);
-    block2->setRight(right_1);
+    if(block2->getRight() != NULL){
+        block2->getRight()->setParent(block1);
+    }
+    
+    block2->setParent(p);
+    if(p == NULL){
+        _root = block2;
+    }
+    else{
+        if(isLeft_1){
+            p->setLeft(block2);
+        }else{
+            p->setRight(block2);
+        }
+    }
+
+    block2->setLeft(l);
+    if(l != NULL)
+        l->setParent(block2);
+    block2->setRight(r);
+    if(r != NULL)
+        r->setParent(block2);
 }
 
 void Floorplanner::perturb(){
-    int len = _blocks.size();
+    _solution_space = _blocks_V;
     int action = rand() % 3;
-    int block_1 = rand() % len;
-    int block_2 = rand() % len;
+    int block_1 = rand() % _block_num;
+    int block_2 = rand() % _block_num;
     while(block_2 == block_1){
-        block_2 = rand() % len;
+        block_2 = rand() % _block_num;
     }
+    Block* b1 = _blocks_V[block_1];
+    Block* b2 = _blocks_V[block_2];
+
     if(action == 0){
-        // rotate 
-        cout << "rotate \n";
+        // cout << "rotate " << _blocks_V[block_1]->getName() << "\n";
         _blocks_V[block_1]->rotate();
     }
     else if(action == 1){
-        // delete & insert
-        cout << "delete " << _blocks_V[block_1]->getName() << 
-             " & insert below " << _blocks_V[block_2]->getName() << "\n";
-        deleteNode(_blocks_V[block_1]);
-        insertNode(_blocks_V[block_2], _blocks_V[block_1], rand() % 2);
+        if(b1 ->getLeft() != NULL && b1->getRight() != NULL){
+            // noob solution
+            return;
+        }
+        int r = rand() % 2;
+        // cout << "delete " << b1->getName() << 
+        //      " & insert below " << b2->getName() <<" left " << r << "\n";
+        deleteNode(b1);
+        insertNode(b2, b1, r);
     }
     else{
-        // swap 
-        cout << "swap!" <<endl;
+        if(b1 == b2->getParent() || b2 == b1->getParent()){
+            // noob solution
+            return;
+        }
+        // cout << "swap " <<_blocks_V[block_1]->getName() << 
+        //      " & " << _blocks_V[block_2]->getName() <<  "\n";
+        swapNode(_blocks_V[block_1], _blocks_V[block_2]);
     }
-
 }
 
-bool Floorplanner::evaluateFeasible(int& width, int& height){
+bool Floorplanner::evaluate(int& width, int& height, int& length){
     stack<Block*> stk;
     LinkedList mylist;
     stk.push(_root);
     while(!stk.empty()){
         Block* blk = stk.top();
         stk.pop();
-        cout << blk->getName() << endl;
+        // cout << blk->getName() << " " ;
         // set coordinates
         if(blk->getParent() == NULL){
             blk->setX(0);
@@ -242,38 +301,66 @@ bool Floorplanner::evaluateFeasible(int& width, int& height){
         if(blk->getLeft() != NULL){
             stk.push(blk->getLeft());
         }
-        mylist.print();
+        // mylist.print();
     }
     height = mylist.getMaxHeight();
     width = mylist.getMaxWidth();
+    for(int i = 0; i < _nets.size(); ++i){
+        length += _nets[i]->getWireLength();
+    }
     if(height > _outline_h || width > _outline_w)
         return false;
     return true;
 }
 
-void Floorplanner::genSolution(int times = 10){
+void Floorplanner::getNormFactor(){
     cout << "..build initial tree " << endl;
     _root = buildTree(_root, 0);
-    while(times > 0){
-        int width = 0, height = 0;
-        while(!evaluateFeasible(width, height)){
-            cout << "get infeasible "<< width << " " << height << endl;
-            width = 0;
-            height = 0;
-            perturb();
-        }
-        cout << "get fasible "<< width << " " << height << endl;
-        --times;
+    int times = (_block_num + _terminal_num) * 2;
+    int total_area = 0, total_l = 0;
+    for(int i = 0; i < times; ++i){
+        int width = 0, height = 0, length = 0;
+        evaluate(width, height, length);
+        // _blocks_V = bb;
+        cout << "get solution " << width << " " << height << " " << length << "\n";
+        total_area += (width*height);
+        total_l += length;
+        perturb();
     }
+    _area_norm = (total_area / times);
+    _wire_norm = (total_l / times);
+    cout << _area_norm << " " << _wire_norm << endl;
 }
+
 void Floorplanner::simulateAnnealing(){
     double temp = 1000;
-    double gamma = 0.999;
+    double gamma = 0.9;
     int threshold = 1;
-
+    int w = 0, h = 0, l = 0;
+    evaluate(w, h ,l);
+    double current_cost = _alpha * w * h / _area_norm + (1 - _alpha) * l / _wire_norm;
+    printf("current_cost %.4f \n", current_cost);
     while (temp > threshold)
     {
-        
+        perturb();
+        int w = 0, h = 0, l = 0;
+        evaluate(w, h ,l);
+        cout << "get solution " << w << " " << h << " " << l << "\n";
+        double cost = w * h / _area_norm + l / _wire_norm;
+        if(cost < current_cost){
+            current_cost = cost;
+            
+        } 
+        else{
+            double prob = (double) rand() / (RAND_MAX + 1.0);
+            if(prob < exp((current_cost - cost)/ temp)){
+                current_cost = cost;
+            }else{
+                // restore
+                // _blocks_V = bb;
+            }
+        }
+        temp *= gamma;
     }
 }
 
@@ -282,13 +369,13 @@ void Floorplanner::showStatus(){
     printf("[alpha]: %f \n",  _alpha);
     printf("[Outline]: (%d, %d) \n", _outline_w, _outline_h);
     printf("Area: (%d / %d) \n", _total_sizes, _outline_w * _outline_h);
-    printf("[Blocks] nums: %d \n", _blocks.size());
-    // for(auto it = _blocks.begin(); it != _blocks.end(); ++it){
-    //     it->second->showInfo();
+    printf("[Blocks] nums: %d \n", _block_num);
+    // for(int i = 0; i < _block_num; ++i){
+    //     _blocks_V[i]->showInfo();
     // }
-    printf("[Terminals] nums: %d \n", _terminals.size());
-    // for(auto it = _terminals.begin(); it != _terminals.end(); ++it){
-    //     it->second->showInfo();
+    printf("[Terminals] nums: %d \n", _terminal_num);
+    // for(int i = 0; i < _terminal_num; ++i){
+    //     _terminals_V[i]->showInfo();
     // }
     printf("[Nets] nums: %d\n", _nets.size());
     // for(int i = 0; i < _nets.size(); ++i){
